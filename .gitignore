@@ -1,0 +1,7 @@
+__pycache__
+sbatch/*
+._*
+.DS_Store
+results/*
+datasets/*
+logs/*
