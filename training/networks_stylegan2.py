@@ -4,16 +4,16 @@
 # To view a copy of this license, visit
 # https://nvlabs.github.io/stylegan2/license.html
 
-"""Network architectures used in the StyleGAN2 paper."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import dnnlib
 import dnnlib.tflib as tflib
 from dnnlib.tflib.ops.upfirdn_2d import upsample_2d, downsample_2d, upsample_conv_2d, conv_downsample_2d
 from dnnlib.tflib.ops.fused_bias_act import fused_bias_act
 
-# NOTE: Do not import any application-specific modules here!
 # Specify all network parameters as kwargs.
 
 #----------------------------------------------------------------------------
@@ -48,6 +48,7 @@ def get_weight(shape, gain=1, use_wscale=True, lrmul=1, weight_var='weight'):
 def dense_layer(x, fmaps, gain=1, use_wscale=True, lrmul=1, weight_var='weight'):
     if len(x.shape) > 2:
         x = tf.reshape(x, [-1, np.prod([d.value for d in x.shape[1:]])])
+
     w = get_weight([x.shape[1].value, fmaps], gain=gain, use_wscale=use_wscale, lrmul=lrmul, weight_var=weight_var)
     w = tf.cast(w, x.dtype)
     return tf.matmul(x, w)
@@ -320,13 +321,13 @@ def G_mapping(
 
 def G_synthesis_stylegan2(
     dlatents_in,                        # Input: Disentangled latents (W) [minibatch, num_layers, dlatent_size].
-    dlatent_size        = 512,          # Disentangled latent (W) dimensionality.
-    num_channels        = 3,            # Number of output color channels.
-    resolution          = 1024,         # Output resolution.
+    dlatent_size        = 128,          # Disentangled latent (W) dimensionality.
+    num_channels        = 1,            # Number of output color channels.
+    resolution          = 256,         # Output resolution.
     fmap_base           = 16 << 10,     # Overall multiplier for the number of feature maps.
     fmap_decay          = 1.0,          # log2 feature map reduction when doubling the resolution.
-    fmap_min            = 1,            # Minimum number of feature maps in any layer.
-    fmap_max            = 512,          # Maximum number of feature maps in any layer.
+    fmap_min            = 4,            # Minimum number of feature maps in any layer.
+    fmap_max            = 128,          # Maximum number of feature maps in any layer.
     randomize_noise     = True,         # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
     architecture        = 'skip',       # Architecture: 'orig', 'skip', 'resnet'.
     nonlinearity        = 'lrelu',      # Activation function: 'relu', 'lrelu', etc.
@@ -423,14 +424,14 @@ def G_synthesis_stylegan2(
 def D_stylegan2(
     images_in,                          # First input: Images [minibatch, channel, height, width].
     labels_in,                          # Second input: Labels [minibatch, label_size].
-    num_channels        = 3,            # Number of input color channels. Overridden based on dataset.
-    resolution          = 1024,         # Input resolution. Overridden based on dataset.
+    num_channels        = 1,            # Number of input color channels. Overridden based on dataset.
+    resolution          = 256,         # Input resolution. Overridden based on dataset.
     label_size          = 0,            # Dimensionality of the labels, 0 if no labels. Overridden based on dataset.
     fmap_base           = 16 << 10,     # Overall multiplier for the number of feature maps.
     fmap_decay          = 1.0,          # log2 feature map reduction when doubling the resolution.
     fmap_min            = 1,            # Minimum number of feature maps in any layer.
     fmap_max            = 512,          # Maximum number of feature maps in any layer.
-    architecture        = 'resnet',     # Architecture: 'orig', 'skip', 'resnet'.
+    architecture        = 'orig',     # Architecture: 'orig', 'skip', 'resnet'.
     nonlinearity        = 'lrelu',      # Activation function: 'relu', 'lrelu', etc.
     mbstd_group_size    = 4,            # Group size for the minibatch standard deviation layer, 0 = disable.
     mbstd_num_features  = 1,            # Number of features for the minibatch standard deviation layer.
@@ -450,8 +451,8 @@ def D_stylegan2(
     labels_in = tf.cast(labels_in, dtype)
 
     # Building blocks for main layers.
-    def fromrgb(x, y, res): # res = 2..resolution_log2
-        with tf.variable_scope('FromRGB'):
+    def fromimage(x, y, res): # res = 2..resolution_log2
+        with tf.variable_scope('FromImage'):
             t = apply_bias_act(conv2d_layer(y, fmaps=nf(res-1), kernel=1), act=act)
             return t if x is None else x + t
     def block(x, res): # res = 2..resolution_log2
@@ -475,7 +476,7 @@ def D_stylegan2(
     for res in range(resolution_log2, 2, -1):
         with tf.variable_scope('%dx%d' % (2**res, 2**res)):
             if architecture == 'skip' or res == resolution_log2:
-                x = fromrgb(x, y, res)
+                x = fromimage(x, y, res)
             x = block(x, res)
             if architecture == 'skip':
                 y = downsample(y)
@@ -483,7 +484,7 @@ def D_stylegan2(
     # Final layers.
     with tf.variable_scope('4x4'):
         if architecture == 'skip':
-            x = fromrgb(x, y, 2)
+            x = fromimage(x, y, 2)
         if mbstd_group_size > 1:
             with tf.variable_scope('MinibatchStddev'):
                 x = minibatch_stddev_layer(x, mbstd_group_size, mbstd_num_features)

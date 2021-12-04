@@ -22,8 +22,9 @@ _valid_configs = [
     'Gorig-Dres-R1-3d-MG-base16162',
     'Gorig-Dres-3d-MG-base16162',
     'Gorig-Dres-R1-3d-MG-base881',
-    'Gorig-Dres-R1-3d-MG-base881',
+    'Gorig-Dres-R1-3d-MG-base882',
     'Gorig-Dres-3d-MG-base887',
+    'Gorig-Dres-R1-3d-MG-base887-TFD',
 ]
 
 #----------------------------------------------------------------------------
@@ -34,7 +35,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
     D         = EasyDict(func_name='training.networks_stylegan2.D_stylegan2')  # Options for discriminator network.
     G_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for generator optimizer.
     D_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for discriminator optimizer.
-    G_loss    = EasyDict(func_name='training.loss.G_logistic')      # Options for generator loss.
+    G_loss    = EasyDict(func_name='training.loss.G_logistic')                 # Options for generator loss.
     D_loss    = EasyDict(func_name='training.loss.D_logistic_r1')              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
