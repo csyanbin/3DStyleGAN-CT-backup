@@ -66,8 +66,8 @@ class TFRecordDataset:
         # List all dcm files
         assert os.path.isfile(self.tfrecord_dir)
         with open(self.tfrecord_dir) as f:
-            img_folders = f.read().splitlines()
-        self.img_folders = img_folders
+            img_files = f.read().splitlines()
+        self.img_files = img_files
         img_shape = [s*32 for s in self.base_size] # e.g. 256x256 
         img_shape.insert(0, 1) # 1x256x256
         
@@ -113,7 +113,6 @@ class TFRecordDataset:
             if "ENVcon" in folder: # for contrast CTCA imgs
                 vmin = -350
                 vmax = 1000
-            images3d = np.zeros((self.shape[1], self.shape[2]))  # 256x256
             ds = dcmread(filename)
             image = ds.pixel_array
             image = image * ds.RescaleSlope + ds.RescaleIntercept
@@ -124,27 +123,19 @@ class TFRecordDataset:
             #    image = image[:, :, np.newaxis]
             #image = image.transpose(2, 0, 1) # HWC => CHW
             image = ndimage.zoom(image, self.shape[1]/image.shape[1]) 
-            images3d[:, :, i] = image
-            return images3d.astype(dtypeGlob_np)
+            return images.astype(dtypeGlob_np)
 
         ## numpy function for dataset map of each item
         def map_image_np(t: np.ndarray):
-            img_batch = np.empty((0, self.shape[1], self.shape[2], self.shape[3]), dtype=dtypeGlob_np)
+            img_batch = np.empty((0, self.shape[1], self.shape[2]), dtype=dtypeGlob_np)
             if np.issubdtype(type(t), int):
                 t = np.array([t])
             for i in range(t.shape[0]):
                 #print(t[i], self.img_folders[t[i]])
-                img = load_dicom_convert(self.img_folders[t[i]])
-                if img.shape[-1] >= self.shape[3]: # random re-sampling
-                    i = np.random.randint(img.shape[-1]-self.shape[3]+1)
-                    img_np = img[np.newaxis, :, :, i:i+self.shape[3]]          # e.g. 1x256x256x64
-                else: # pad with 0s
-                    pad_img = np.zeros((self.shape[1], self.shape[2], self.shape[3]-img.shape[-1]), dtype=dtypeGlob_np)
-                    img_np = np.concatenate((img, pad_img), axis=-1)    # 256x256x64
-                    img_np = np.expand_dims(img_np, axis=0)             # 1x256x256x64
-                img_batch = np.concatenate((img_batch,img_np), axis=0).astype(np.float16)
+                img = load_dicom_convert(self.img_files[t[i]]) # 256x256
+                img_np = img[np.newaxis, :, :] # 1x256x256
+                img_batch = np.concatenate((img_batch,img_np), axis=0).astype(dtypeGlob_np)
 
-            print(img_batch.shape)
             return np.expand_dims(img_batch, axis=1)
 
     
