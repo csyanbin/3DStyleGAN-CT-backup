@@ -28,6 +28,7 @@ from tqdm import tqdm
 # 3D Images - NIFTI
 import nibabel as nib
 from pydicom import dcmread
+from scipy import ndimage
 
 
 
@@ -738,16 +739,28 @@ def load_dicom_convert256(folder, vmin=-250, vmax=650):
         image = np.clip(image, a_min=vmin, a_max=vmax)
         #image = 2*(image-vmin)/(vmax-vmin) - 1.0
         image = 1.*(image-vmin)/(vmax-vmin)     # [0.0, 1.0] consistent with MRI example
-        if image.ndim == 2:
-            image = image[:, :, np.newaxis]
-        image = image.transpose(2, 0, 1) # HWC => CHW
+        #if image.ndim == 2:
+        #    image = image[:, :, np.newaxis]
+        #image = image.transpose(2, 0, 1) # HWC => CHW
+        image = ndimage.zoom(image, 0.5)
         images3d[:, :, i] = image        
     return images3d 
     
 #----------------------------------------------------------------------------
 def create_from_images3dCT256(tfrecord_dir, image_dir, shuffle, base_size, vmin=-250, vmax=650):
     print('Loading images from "%s"' % image_dir)
-    image_folders = sorted(glob.glob(os.path.join(image_dir, '*')))
+    print(base_size, vmin, vmax)
+    if "ENVcon" in image_dir:
+        folders = sorted(glob.glob(os.path.join(image_dir, '*')))
+        image_folders = []
+        for folder in folders:
+            sub_folders = sorted(glob.glob(os.path.join(folder, '*')))
+            image_folders.extend(sub_folders)
+    elif "SCT" in image_dir:
+        image_folders = sorted(glob.glob(os.path.join(image_dir, '*')))
+    else:
+        error('Wrong folder')
+
     if len(image_folders) == 0:
         error('No input images found')
     else:
@@ -759,6 +772,8 @@ def create_from_images3dCT256(tfrecord_dir, image_dir, shuffle, base_size, vmin=
     print( "======================================" )
 
     channels = 1
+    slices = base_size[-1] * 32     # e.g. 32, 64
+    slices_interval = 64
 
     # if img.shape[1] != resolution:
     #     error('Input images must have the same width and height')
@@ -769,26 +784,26 @@ def create_from_images3dCT256(tfrecord_dir, image_dir, shuffle, base_size, vmin=
     total_images = 0
     for folder in image_folders:
         dcms = glob.glob(os.path.join(folder, '*.dcm')) 
-        if len(dcms)<=32*base_size[-1]: # <32 slices
+        if len(dcms) < slices: # <= slices
             total_images += 1
         else:
-            total_images += len(dcms) - 32*base_size[-1] + 1
+            total_images += int((len(dcms)-slices)/slices_interval + 1)    # considering slices_interval
     print("Total images:", total_images)
     
     with TFRecordExporter(tfrecord_dir, total_images) as tfr:
         #order = tfr.choose_shuffled_order() if shuffle else np.arange(len(image_filenames))
         order = np.random.permutation(total_images) if shuffle else np.arange(total_images)
         for folder in image_folders:
-            img = load_dicom_convert(folder, vmin, vmax)
+            img = load_dicom_convert256(folder, vmin, vmax)
 
-            if img.shape[-1] >= 32*base_size[-1]:
-                for i in range(img.shape[-1]-32*base_size[-1]+1):
-                    img_tf = img[np.newaxis, :, :, i:i+32*base_size[-1]] # 1x256x256x32
+            if img.shape[-1] >= slices:
+                for i in range(0, img.shape[-1]-slices+1, slices_interval):
+                    img_tf = img[np.newaxis, :, :, i:i+slices] # 1x256x256x32
                     tfr.add_image3d_base(img_tf, base_size)
             else: # pad with 0s
-                pad_img = np.zeros((256, 256, 32*base_size[-1]-img.shape[-1]))
-                img_tf = np.concatenate((img, pad_img), axis=-1) # 256x256x32
-                img_tf = np.expand_dims(img_tf, axis=0) # 1x256x256x32
+                pad_img = np.zeros((256, 256, slices-img.shape[-1]))
+                img_tf = np.concatenate((img, pad_img), axis=-1) # 256x256x64
+                img_tf = np.expand_dims(img_tf, axis=0) # 1x256x256x64
                 tfr.add_image3d_base(img_tf, base_size)
 
 
@@ -1087,7 +1102,7 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
-    p.add_argument(     '--base_size',      help='Base Layer Size (e.g. 4 4 4 for 2^x sized images. 5 6 7 for 160x192x224 (5x32, 6x32, 7x32) or 64x512x512 (2x32, 16x32, 16x32) images ). (default: 2 16 16 for 64x512x512 images', nargs=3, type=int, default=[8, 8, 1] )
+    p.add_argument(     '--base_size',      help='Base Layer Size (e.g. 4 4 4 for 2^x sized images. 5 6 7 for 160x192x224 (5x32, 6x32, 7x32) or 64x512x512 (2x32, 16x32, 16x32) images ). (default: 2 16 16 for 64x512x512 images', nargs=3, type=int, default=[8, 8, 2] )
     p.add_argument(     '--vmin',           help='min HU value to clip (default: -250)', type=float, default=-250)
     p.add_argument(     '--vmax',           help='max HU value to clip (default: 650)', type=float, default=650)
 

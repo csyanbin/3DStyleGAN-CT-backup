@@ -124,9 +124,12 @@ class MetricBase:
 
     def _get_test_dataset_obj(self):
         if self._test_dataset_obj is None:
+            """
             test_dataset_args = dnnlib.EasyDict(tfrecord_dir="TFRecords_Test250_Half_Float32_Shuffle", shuffle_mb=0)
             # test_dataset_args = dnnlib.EasyDict(tfrecord_dir="TFRecords_Test250_Float32_Shuffle", shuffle_mb=0)
             self._test_dataset_obj = dataset.load_3d_dataset( data_dir="/data/vision/polina/users/razvan/sungmin/stylegan2/sbatch/script_real_data/TFRecords", **test_dataset_args )
+            """
+            self._test_dataset_obj = dataset.load_3d_dataset(data_dir=self._data_dir, **self._dataset_args)
         return self._test_dataset_obj
 
     def _iterate_reals(self, minibatch_size):

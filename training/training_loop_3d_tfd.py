@@ -16,7 +16,7 @@ import dnnlib.tflib.tfutil as tfutil
 
 from dnnlib.tflib.autosummary import autosummary
 
-from training import dataset
+from training import dataset_tfd
 from training import misc
 from metrics import metric_base
 
@@ -148,7 +148,8 @@ def training_loop(
     
     # Load training set.
     # training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
-    training_set = dataset.load_3d_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
+    # training_set = dataset.load_3d_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
+    training_set = dataset_tfd.load_3d_dataset(data_dir=dnnlib.convert_path(data_dir), verbose=True, **dataset_args)
     # training_set = training_set.repeat()
 
     grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(training_set, **grid_args)
@@ -229,7 +230,7 @@ def training_loop(
                 reals_write = tf.concat([reals_write, reals_var[minibatch_gpu_in:]], axis=0)
                 labels_write = tf.concat([labels_write, labels_var[minibatch_gpu_in:]], axis=0)
                 data_fetch_ops += [tf.assign(reals_var, reals_write)]
-                data_fetch_ops += [tf.assign(labels_var, labels_write)]
+                #data_fetch_ops += [tf.assign(labels_var, labels_write)]
                 reals_read = reals_var[:minibatch_gpu_in]
                 labels_read = labels_var[:minibatch_gpu_in]
 
@@ -263,10 +264,10 @@ def training_loop(
             else:
                 if G_reg is not None: 
                     # G_reg_opt.register_gradients( tf.reduce_mean( G_reg * G_reg_interval ), G_gpu.trainables)
-                    G_reg_opt.register_gradients( tf.cast( tf.reduce_mean( tf.cast( G_reg * G_reg_interval, tf.float64 )), dtypeGlob ), G_gpu.trainables)
+                    G_reg_opt.register_gradients( tf.cast( tf.reduce_mean( tf.cast( G_reg * G_reg_interval, tf.float64 ) ), dtypeGlob ), G_gpu.trainables)
                 if D_reg is not None: 
                     # D_reg_opt.register_gradients( tf.reduce_mean( D_reg * D_reg_interval ), D_gpu.trainables)
-                    D_reg_opt.register_gradients( tf.cast( tf.reduce_mean( tf.cast( D_reg * D_reg_interval, tf.float64 )), dtypeGlob ), D_gpu.trainables)
+                    D_reg_opt.register_gradients( tf.cast( tf.reduce_mean( tf.cast( D_reg * D_reg_interval, tf.float64 ) ), dtypeGlob ), D_gpu.trainables)
                         
             # G_opt.register_gradients( tf.reduce_mean( G_loss ), G_gpu.trainables)
             # D_opt.register_gradients( tf.reduce_mean( D_loss ), D_gpu.trainables)

@@ -23,11 +23,18 @@ import os
 import pretrained_networks
 
 import nibabel as nib
+from pydicom import dcmread
 
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
 #asd
 
+def convert_to_HU(img, vmin, vmax, scale, intercept): ## Convert from [0,1] to HU ranges
+    #img = vmin + 0.5*(img+1)*(vmax-vmin) # to [vmin, vmax] range
+    img = vmin + img*(vmax-vmin) # to [vmin, vmax] range
+    img = (img - intercept) / scale # convert the HU ranges
+
+    return img
 #----------------------------------------------------------------------------
 
 # def generate_images(network_pkl, seeds, truncation_psi):
@@ -97,6 +104,63 @@ def generate_images(network_pkl, seeds, truncation_psi):
         PIL.Image.fromarray(images[0, :, :, images.shape[3]//2, 0 ], 'L').save(dnnlib.make_run_dir_path('seed%04d_z.png' % seed))
 
 #----------------------------------------------------------------------------
+
+def generate_images3D(network_pkl, seeds, truncation_psi, vmin, vmax):
+    print('Loading networks from "%s"...' % network_pkl)
+    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
+    w_avg = Gs.get_var('dlatent_avg') # [component]
+
+    Gs_syn_kwargs = dnnlib.EasyDict()
+    Gs_syn_kwargs.output_transform = dict(func=tflib.convert_3d_images_to_float, nchwd_to_nhwdc=True)
+    Gs_syn_kwargs.randomize_noise = True
+    Gs_syn_kwargs.minibatch_size = 1
+
+    # Gs_kwargs = dnnlib.EasyDict()
+    # Gs_kwargs.output_transform = dict(func=tflib.convert_3d_images_to_uint8, nchwd_to_nhwdc=True)
+    # Gs_kwargs.randomize_noise = False
+
+    # if truncation_psi is not None:
+    #     Gs_kwargs.truncation_psi = truncation_psi
+
+    # Load an example CT image
+    #ds = dcmread("/data/hpi_ccta/data/SCT_180200/noncontrast/IM_000000.dcm")
+    result_dir = "generation3D"
+    
+    for seed_idx, seed in enumerate(seeds):
+        print('Generating 3D image for seed %d (%d/%d) ...' % (seed, seed_idx, len(seeds)))
+        rnd = np.random.RandomState(seed)
+        z = rnd.randn(1, *Gs.input_shape[1:]) # [minibatch, component]
+
+        w = Gs.components.mapping.run( z, None )
+        w = w_avg + (w - w_avg) * truncation_psi # [minibatch, layer, component]
+        images = Gs.components.synthesis.run( w, **Gs_syn_kwargs)
+        
+        print(images.shape)
+        print(result_dir, truncation_psi, vmin, vmax)
+        print(images.min(), images.max())
+
+        # tflib.set_vars({var: rnd.randn(*var.shape.as_list()) for var in noise_vars}) # [height, width]
+        # images = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
+
+        ## make dirs for images save
+        os.makedirs(f'{result_dir}/seed{seed:04d}_trunc{truncation_psi:1.2f}', exist_ok=True)
+
+        for s in range(images.shape[3]): # save each slice
+            ds = dcmread(f"/data/hpi_ccta/data/SCT_180260/noncontrast/IM_0000{s:02d}.dcm")
+            ds.Rows = images.shape[1]
+            ds.Columns = images.shape[2]
+            image_array = ds.pixel_array
+            scale = ds.RescaleSlope
+            intercept = ds.RescaleIntercept
+            img   = images[:,:,:,s,:]       # 1xHxWxSx1
+            imgCT = convert_to_HU(img.squeeze(), vmin, vmax, scale, intercept)
+            ds.PixelData = imgCT.astype(np.uint16).tobytes()   
+            ds.save_as(f'{result_dir}/seed{seed:04d}_trunc{truncation_psi:1.2f}/IM{s:06d}.dcm')
+
+
+#----------------------------------------------------------------------------
+
 
 def style_mixing_example(network_pkl, row_seeds, col_seeds, truncation_psi, col_styles, minibatch_size=4):
     print('Loading networks from "%s"...' % network_pkl)
@@ -441,6 +505,14 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     parser_generate_images.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=0.5)
     parser_generate_images.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
 
+    parser_generate_images3D = subparsers.add_parser('generate-images3D', help='Generate images 3D')
+    parser_generate_images3D.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
+    parser_generate_images3D.add_argument('--seeds', type=_parse_num_range, help='List of random seeds', required=True)
+    parser_generate_images3D.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=0.5)
+    parser_generate_images3D.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    parser_generate_images3D.add_argument('--vmin', type=float, help='Truncation psi (default: %(default)s)', default=-250)
+    parser_generate_images3D.add_argument('--vmax', type=float, help='Truncation psi (default: %(default)s)', default=650)
+
     parser_style_mixing_example = subparsers.add_parser('style-mixing-example', help='Generate style mixing video')
     parser_style_mixing_example.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
     parser_style_mixing_example.add_argument('--row-seeds', type=_parse_num_range, help='Random seeds to use for image rows', required=True)
@@ -482,6 +554,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
 
     func_name_map = {
         'generate-images': 'run_generator.generate_images',
+        'generate-images3D': 'run_generator.generate_images3D',
         'style-mixing-example': 'run_generator.style_mixing_example',
         'interpolation-example': 'run_generator.interpolation_example',
         'average-image-example': 'run_generator.average_image_example'

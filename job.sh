@@ -24,7 +24,7 @@ python test.py
 #python dataset_tool_CT.py create_from_images3dCT datasets/SCT_tfrecord datasets/SCT12bit --shuffle 1 --base_size 16 16 2
 
 #python run_training.py --num-gpus=4 --data-dir=datasets --config=Gorig-Dres-3d-1mm-base567 --dataset=OASIS_tfrecord --total-kimg=6000
-python run_training.py --num-gpus=4 --data-dir=datasets --config=Gorig-Dres-R1-3d-MG-base16162 --dataset=SCT_tfrecord --total-kimg=6000 --metrics=mmd_1K
+python run_training.py --num-gpus=4 --data-dir=datasets --config=Gorig-Dres-3d-MG-base16162 --dataset=SCT_tfrecord --total-kimg=6000 --metrics=mmd_1K
 
 
 

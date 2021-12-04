@@ -320,3 +320,18 @@ def convert_3d_images_to_uint8(images, drange=[-1,1], nchwd_to_nhwdc=False, shri
     scale = 255 / (drange[1] - drange[0])
     images = ( images - drange[ 0 ] ) * scale + 0.5
     return tf.saturate_cast(images, tf.uint8)
+
+
+def convert_3d_images_to_float(images, drange=[-1,1], nchwd_to_nhwdc=False, shrink=1):
+    """Convert a minibatch of images from float32 to uint8 with configurable dynamic range.
+    Can be used as an output transformation for Network.run().
+    """
+    images = tf.cast(images, tf.float32)
+    if shrink > 1:
+        ksize = [1, 1, shrink, shrink, shrink]
+        images = tf.nn.avg_pool(images, ksize=ksize, strides=ksize, padding="VALID", data_format="NCHWD")
+    if nchwd_to_nhwdc:
+        images = tf.transpose(images, [0, 2, 3, 4, 1])
+    scale = 1.0 / (drange[1] - drange[0])
+    images = ( images - drange[ 0 ] ) * scale + 0.0          # [0.0, 1.0]
+    return images

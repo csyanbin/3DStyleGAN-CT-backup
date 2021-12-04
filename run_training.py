@@ -20,7 +20,10 @@ _valid_configs = [
     'Gorig-Dres-DeepFil-R1-3d-2mm-base567',
     'Gorig-Dres-R2-3d-2mm-base567',
     'Gorig-Dres-R1-3d-MG-base16162',
+    'Gorig-Dres-3d-MG-base16162',
     'Gorig-Dres-R1-3d-MG-base881',
+    'Gorig-Dres-R1-3d-MG-base881',
+    'Gorig-Dres-3d-MG-base887',
 ]
 
 #----------------------------------------------------------------------------
@@ -470,6 +473,58 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
 
         sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
         sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
+    elif config_id == 'Gorig-Dres-3d-MG-base16162':
+        train   = EasyDict(run_func_name='training.training_loop_3d.training_loop') # Options for training loop.
+ 
+        dataset_args = EasyDict(tfrecord_dir=dataset)
+        dataset_args.base_size = [ 16, 16, 2 ] 
+
+        G       = EasyDict(func_name='training.networks3d_stylegan2.G_main')
+        D       = EasyDict(func_name='training.networks3d_stylegan2.D_stylegan2_3d_curated_real')
+
+        G_loss  = EasyDict(func_name='training.loss.G_logistic_ns_pathreg')
+        D_loss  = EasyDict(func_name='training.loss.D_logistic')
+
+        # Generator Params 
+        G.architecture = 'orig'
+        
+        # Mapping Network Params
+        G.latent_size = 64
+        G.dlatent_size = 64
+        G.mapping_fmaps = 64
+
+        # Synthesis Network Params
+        # G.resolution = 128
+        G.fmap_min = 16
+        G.fmap_max = 16
+        G.base_size = [ 16, 16, 2 ]
+
+        # Without Noise
+        G.no_noise = False
+
+        # Discriminator Params 
+        D.architecture = 'resnet'        
+        # D.resolution=128
+        D.fmap_min = 16
+        D.fmap_max = 16
+        D.base_size = [ 16, 16, 2 ]
+        
+        train.data_dir = data_dir
+        train.total_kimg = total_kimg
+        train.mirror_augment = mirror_augment
+        train.image_snapshot_ticks = 1
+        train.network_snapshot_ticks = 1
+        #train.lazy_regularization = False 
+        
+        sched.G_lrate_base = sched.D_lrate_base = 0.002
+
+        #sched.minibatch_gpu_base = 4
+        #sched.minibatch_gpu_dict = {8: 16, 16: 8, 32: 4, 64: 4}
+        sched.minibatch_gpu_base = 2
+        sched.minibatch_gpu_dict = {8: 8, 16: 4, 32: 2, 64: 2}
+
+        sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
+        sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
     elif config_id == 'Gorig-Dres-R1-3d-MG-base881':
         train   = EasyDict(run_func_name='training.training_loop_3d.training_loop') # Options for training loop.
  
@@ -522,6 +577,166 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
 
         sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
         sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
+    elif config_id == 'Gorig-Dres-R1-3d-MG-base882':
+        train   = EasyDict(run_func_name='training.training_loop_3d.training_loop') # Options for training loop.
+ 
+        dataset_args = EasyDict(tfrecord_dir=dataset)
+        dataset_args.base_size = [ 8, 8, 2 ] 
+
+        G       = EasyDict(func_name='training.networks3d_stylegan2.G_main')
+        D       = EasyDict(func_name='training.networks3d_stylegan2.D_stylegan2_3d_curated_real')
+
+        G_loss  = EasyDict(func_name='training.loss.G_logistic_ns_pathreg')
+        D_loss  = EasyDict(func_name='training.loss.D_logistic_r1')
+
+        # Generator Params 
+        G.architecture = 'orig'
+        
+        # Mapping Network Params
+        G.latent_size = 96
+        G.dlatent_size = 96
+        G.mapping_fmaps = 96
+
+        # Synthesis Network Params
+        # G.resolution = 128
+        G.fmap_min = 32
+        G.fmap_max = 32
+        G.base_size = [ 8, 8, 2 ]
+
+        # Without Noise
+        G.no_noise = True
+
+        # Discriminator Params 
+        D.architecture = 'resnet'        
+        # D.resolution=128
+        D.fmap_min = 32
+        D.fmap_max = 32
+        D.base_size = [ 8, 8, 2 ]
+        
+        train.data_dir = data_dir
+        train.total_kimg = total_kimg
+        train.mirror_augment = mirror_augment
+        train.image_snapshot_ticks = 1
+        train.network_snapshot_ticks = 1
+        train.lazy_regularization = False 
+        
+        sched.G_lrate_base = sched.D_lrate_base = 0.002
+
+        #sched.minibatch_gpu_base = 4
+        #sched.minibatch_gpu_dict = {8: 16, 16: 8, 32: 4, 64: 4}
+        sched.minibatch_gpu_base = 2
+        sched.minibatch_gpu_dict = {8: 8, 16: 4, 32: 2, 64: 2}
+
+        sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
+        sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
+    elif config_id == 'Gorig-Dres-3d-MG-base887':
+        train   = EasyDict(run_func_name='training.training_loop_3d.training_loop') # Options for training loop.
+ 
+        dataset_args = EasyDict(tfrecord_dir=dataset)
+        dataset_args.base_size = [ 8, 8, 7 ] 
+
+        G       = EasyDict(func_name='training.networks3d_stylegan2.G_main')
+        D       = EasyDict(func_name='training.networks3d_stylegan2.D_stylegan2_3d_curated_real')
+
+        G_loss  = EasyDict(func_name='training.loss.G_logistic_ns_pathreg')
+        D_loss  = EasyDict(func_name='training.loss.D_logistic')
+
+        # Generator Params 
+        G.architecture = 'orig'
+        
+        # Mapping Network Params
+        G.latent_size = 64
+        G.dlatent_size = 64
+        G.mapping_fmaps = 64
+
+        # Synthesis Network Params
+        # G.resolution = 128
+        G.fmap_min = 16
+        G.fmap_max = 16
+        G.base_size = [ 8, 8, 7 ]
+
+        # Without Noise
+        G.no_noise = True
+
+        # Discriminator Params 
+        D.architecture = 'resnet'        
+        # D.resolution=128
+        D.fmap_min = 16
+        D.fmap_max = 16
+        D.base_size = [ 8, 8, 7 ]
+        
+        train.data_dir = data_dir
+        train.total_kimg = total_kimg
+        train.mirror_augment = mirror_augment
+        train.image_snapshot_ticks = 1
+        train.network_snapshot_ticks = 1
+        train.lazy_regularization = False 
+        
+        sched.G_lrate_base = sched.D_lrate_base = 0.002
+
+        #sched.minibatch_gpu_base = 4
+        #sched.minibatch_gpu_dict = {8: 16, 16: 8, 32: 4, 64: 4}
+        sched.minibatch_gpu_base = 2
+        sched.minibatch_gpu_dict = {8: 8, 16: 4, 32: 2, 64: 2}
+
+        sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
+        sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
+
+    elif config_id == 'Gorig-Dres-R1-3d-MG-base887-TFD':
+        train   = EasyDict(run_func_name='training.training_loop_3d_tfd.training_loop') # Options for training loop.
+ 
+        dataset_args = EasyDict(tfrecord_dir=dataset)
+        dataset_args.base_size = [ 8, 8, 7 ] 
+
+        G       = EasyDict(func_name='training.networks3d_stylegan2.G_main')
+        D       = EasyDict(func_name='training.networks3d_stylegan2.D_stylegan2_3d_curated_real')
+
+        G_loss  = EasyDict(func_name='training.loss.G_logistic_ns_pathreg')
+        D_loss  = EasyDict(func_name='training.loss.D_logistic_r1')
+
+        # Generator Params 
+        G.architecture = 'orig'
+        
+        # Mapping Network Params
+        G.latent_size = 128
+        G.dlatent_size = 128
+        G.mapping_fmaps = 128
+
+        # Synthesis Network Params
+        # G.resolution = 128
+        G.fmap_min = 16
+        G.fmap_max = 16
+        G.base_size = [ 8, 8, 7 ]
+
+        # Without Noise
+        G.no_noise = True
+
+        # Discriminator Params 
+        D.architecture = 'resnet'        
+        # D.resolution=128
+        D.fmap_min = 16
+        D.fmap_max = 16
+        D.base_size = [ 8, 8, 7 ]
+        
+        train.data_dir = data_dir
+        train.total_kimg = total_kimg
+        train.mirror_augment = mirror_augment
+        train.image_snapshot_ticks = 1
+        train.network_snapshot_ticks = 1
+        train.lazy_regularization = True
+        
+        sched.G_lrate_base = sched.D_lrate_base = 0.002
+
+        #sched.minibatch_gpu_base = 4
+        #sched.minibatch_gpu_dict = {8: 16, 16: 8, 32: 4, 64: 4}
+        #sched.minibatch_gpu_base = 2
+        #sched.minibatch_gpu_dict = {8: 8, 16: 4, 32: 2, 64: 2}
+        sched.minibatch_gpu_base = 3
+        sched.minibatch_gpu_dict = {8: 9, 16: 6, 32: 3, 64: 3}
+
+        sched.minibatch_size_base = sched.minibatch_gpu_base * num_gpus
+        sched.minibatch_size_dict = {8: sched.minibatch_gpu_dict[ 8 ] * num_gpus , 16:  sched.minibatch_gpu_dict[ 16 ] * num_gpus, 32:  sched.minibatch_gpu_dict[ 32 ] * num_gpus, 64:  sched.minibatch_gpu_dict[ 64 ] * num_gpus}
+
     else:
         print( "Unknown Config" )
         return
