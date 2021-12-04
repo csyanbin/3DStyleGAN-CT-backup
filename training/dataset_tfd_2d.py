@@ -83,7 +83,7 @@ class TFRecordDataset:
 
         # Determine shape and resolution.
         max_shape = img_shape
-        print(img_folders)
+        print("#imgs:",len(img_files))
         print(self.base_size)
         print(img_shape)
         print(max_shape)
