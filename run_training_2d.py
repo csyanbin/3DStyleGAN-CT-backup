@@ -18,7 +18,7 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]="true"
 #----------------------------------------------------------------------------
 
 _valid_configs = [
-    'Gorig-Dres-R1-2d-MG-base88,',
+    'Gorig-Dres-R1-2d-MG-base88',
     'Gorig-Dres-2d-MG-base88',
     'Gorig-Dres-R1-2d-MG-base88-TFD',
 ]

@@ -14,7 +14,7 @@ tf.disable_v2_behavior()
 import dnnlib.tflib as tflib
 
 from metrics_2d import metric_base
-from training import misc_2d
+from training import misc_2d as misc
 
 #----------------------------------------------------------------------------
 

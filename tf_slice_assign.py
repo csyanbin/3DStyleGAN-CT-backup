@@ -1,7 +1,8 @@
 import numpy as np
 # NOTE: numpy is imported for argsorting. We might not use it but then lose in
 # code clarity (and a bit in speed but negligible).
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 def slice_assign(sliced_tensor, assigned_tensor, *slice_args, verbose=0):

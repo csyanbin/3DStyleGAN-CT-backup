@@ -11,7 +11,7 @@ from dnnlib import EasyDict
 #----------------------------------------------------------------------------
 
 metric_defaults = EasyDict([(args.name, args) for args in [
-    EasyDict(name='fid50k_2d',    func_name='metrics_2d.frechet_inception_distance.FID', num_images=50000, minibatch_per_gpu=8),
+    EasyDict(name='fid50k',    func_name='metrics_2d.frechet_inception_distance.FID', num_images=50000, minibatch_per_gpu=8),
     EasyDict(name='is50k',     func_name='metrics_2d.inception_score.IS',             num_images=50000, num_splits=10, minibatch_per_gpu=8),
     EasyDict(name='ppl_zfull', func_name='metrics_2d.perceptual_path_length.PPL',     num_samples=50000, epsilon=1e-4, space='z', sampling='full', crop=True, minibatch_per_gpu=4, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
     EasyDict(name='ppl_wfull', func_name='metrics_2d.perceptual_path_length.PPL',     num_samples=50000, epsilon=1e-4, space='w', sampling='full', crop=True, minibatch_per_gpu=4, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),

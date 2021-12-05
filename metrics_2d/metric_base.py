@@ -15,7 +15,7 @@ tf.disable_v2_behavior()
 import dnnlib
 import dnnlib.tflib as tflib
 
-from training import misc_2d
+from training import misc_2d as misc
 #from training import dataset
 from training import dataset_tfd_2d as dataset
 
