@@ -110,7 +110,7 @@ class TFRecordDataset:
 
         ## load dicom image series from folder
         def load_dicom_convert(filename, vmin=-250, vmax=650):
-            if "ENVcon" in folder: # for contrast CTCA imgs
+            if "ENVcon" in filename: # for contrast CTCA imgs
                 vmin = -350
                 vmax = 1000
             ds = dcmread(filename)
@@ -123,7 +123,7 @@ class TFRecordDataset:
             #    image = image[:, :, np.newaxis]
             #image = image.transpose(2, 0, 1) # HWC => CHW
             image = ndimage.zoom(image, self.shape[1]/image.shape[1]) 
-            return images.astype(dtypeGlob_np)
+            return image.astype(dtypeGlob_np)
 
         ## numpy function for dataset map of each item
         def map_image_np(t: np.ndarray):
@@ -146,8 +146,8 @@ class TFRecordDataset:
             self._tf_labels_dataset = tf.data.Dataset.from_tensor_slices(self._tf_labels_var)
 
             ## CTCA images dataset
-            dset = tf.data.Dataset.range(len(self.img_folders))
-            dset = dset.shuffle(len(self.img_folders))
+            dset = tf.data.Dataset.range(len(self.img_files))
+            dset = dset.shuffle(len(self.img_files))
             if repeat:
                 print( "=================================================" )
                 print( " Dataset Repeated" )

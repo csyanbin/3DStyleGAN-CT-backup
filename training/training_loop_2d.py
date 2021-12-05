@@ -15,8 +15,8 @@ import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
 from training import dataset_tfd_2d
-from training import misc
-from metrics import metric_base
+import training.misc_2d as misc
+from metrics_2d import metric_base
 
 import sys
 
@@ -218,7 +218,7 @@ def training_loop(
                 reals_write = tf.concat([reals_write, reals_var[minibatch_gpu_in:]], axis=0)
                 labels_write = tf.concat([labels_write, labels_var[minibatch_gpu_in:]], axis=0)
                 data_fetch_ops += [tf.assign(reals_var, reals_write)]
-                data_fetch_ops += [tf.assign(labels_var, labels_write)]
+                #data_fetch_ops += [tf.assign(labels_var, labels_write)]
                 reals_read = reals_var[:minibatch_gpu_in]
                 labels_read = labels_var[:minibatch_gpu_in]
 
@@ -338,7 +338,7 @@ def training_loop(
             total_time = dnnlib.RunContext.get().get_time_since_start() + resume_time
 
             # Report progress.
-            print('tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f' % (
+            print('tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f ' % (
                 autosummary('Progress/tick', cur_tick),
                 autosummary('Progress/kimg', cur_nimg / 1000.0),
                 autosummary('Progress/lod', sched.lod),
@@ -346,8 +346,9 @@ def training_loop(
                 dnnlib.util.format_time(autosummary('Timing/total_sec', total_time)),
                 autosummary('Timing/sec_per_tick', tick_time),
                 autosummary('Timing/sec_per_kimg', tick_time / tick_kimg),
-                autosummary('Timing/maintenance_sec', maintenance_time),
-                autosummary('Resources/peak_gpu_mem_gb', peak_gpu_mem_op.eval() / 2**30)))
+                autosummary('Timing/maintenance_sec', maintenance_time)
+                #autosummary('Resources/peak_gpu_mem_gb', peak_gpu_mem_op.eval() / 2**30)
+                ))
             autosummary('Timing/total_hours', total_time / (60.0 * 60.0))
             autosummary('Timing/total_days', total_time / (24.0 * 60.0 * 60.0))
 

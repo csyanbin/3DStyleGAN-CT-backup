@@ -249,15 +249,15 @@ def training_loop(
                     print( "===============================" )
                     print( "G_loss/G_reg" )
                     G_loss = autosummary('G_loss', G_loss )
-                    G_reg = autosummary('G_loss', G_reg )
+                    G_reg = autosummary('G_reg', G_reg )
                     print( "===============================" )
 
                     G_loss += G_reg
                 if D_reg is not None: 
                     print( "================================" )
                     print( "D_loss/D_reg" )
-                    D_loss = autosummary('G_loss', D_loss )
-                    D_reg = autosummary('G_loss', D_reg )
+                    D_loss = autosummary('D_loss', D_loss )
+                    D_reg = autosummary('D_reg', D_reg )
                     print( "===============================" )
                     D_loss += tf.cast( D_reg, tf.float16 )
             else:

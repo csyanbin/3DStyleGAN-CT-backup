@@ -1,4 +1,8 @@
-# Please see the codes and license information of the original StyleGAN2 in https://nvlabs.github.io/stylegan2/license.html.
+# Copyright (c) 2019, NVIDIA Corporation. All rights reserved.
+#
+# This work is made available under the Nvidia Source Code License-NC.
+# To view a copy of this license, visit
+# https://nvlabs.github.io/stylegan2/license.html
 
 """Common definitions for GAN metrics."""
 
@@ -11,10 +15,9 @@ tf.disable_v2_behavior()
 import dnnlib
 import dnnlib.tflib as tflib
 
-from training import misc
-from training import dataset
-
-from PIL import Image as p_img
+from training import misc_2d
+#from training import dataset
+from training import dataset_tfd_2d as dataset
 
 #----------------------------------------------------------------------------
 # Base class for metrics.
@@ -28,9 +31,7 @@ class MetricBase:
         self._progress_max = None
         self._progress_sec = None
         self._progress_time = None
-        self._test_dataset_obj = None
         self._reset()
-
 
     def close(self):
         self._reset()
@@ -43,7 +44,6 @@ class MetricBase:
         self._data_dir = data_dir
         self._dataset_args = dataset_args
         self._dataset_obj = None
-        self._test_dataset_obj = None
         self._mirror_augment = mirror_augment
         self._eval_time = 0
         self._results = []
@@ -120,109 +120,23 @@ class MetricBase:
 
     def _get_dataset_obj(self):
         if self._dataset_obj is None:
-            self._dataset_obj = dataset.load_3d_dataset(data_dir=self._data_dir, **self._dataset_args)
+            self._dataset_obj = dataset.load_dataset(data_dir=self._data_dir, **self._dataset_args)
         return self._dataset_obj
-
-    def _get_test_dataset_obj(self):
-        if self._test_dataset_obj is None:
-            """
-            test_dataset_args = dnnlib.EasyDict(tfrecord_dir="TFRecords_Test250_Half_Float32_Shuffle", shuffle_mb=0)
-            # test_dataset_args = dnnlib.EasyDict(tfrecord_dir="TFRecords_Test250_Float32_Shuffle", shuffle_mb=0)
-            self._test_dataset_obj = dataset.load_3d_dataset( data_dir="/data/vision/polina/users/razvan/sungmin/stylegan2/sbatch/script_real_data/TFRecords", **test_dataset_args )
-            """
-            self._test_dataset_obj = dataset.load_3d_dataset(data_dir=self._data_dir, **self._dataset_args)
-        return self._test_dataset_obj
 
     def _iterate_reals(self, minibatch_size):
         dataset_obj = self._get_dataset_obj()
         while True:
             images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
-            images = images * 255 + 0.5
-            images = images.astype( 'uint8' )
-
-            # images = tflib.convert_3d_images_to_uint8( images, drange=[0, 1.0] )
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                # images = tf.concat([images, images, images], axis=1)
-                images = np.repeat(images, 3, axis=1)
-            #print('images.shape', images.shape)
-            # if self._mirror_augment:
-            #     images = misc.apply_mirror_augment(images)
-            yield images
-
-    def _iterate_reals_norgb(self, minibatch_size):
-        dataset_obj = self._get_dataset_obj()
-        while True:
-            images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
-            # images = images * 255 + 0.5
-            images = images.astype( 'float32' )
-            # images = tf.cast(images, tf.float32)
-
-            # images = tflib.convert_3d_images_to_uint8( images, drange=[0, 1.0] )
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                # images = tf.concat([images, images, images], axis=1)
-                images = np.repeat(images, 1, axis=1)
-            #print('images.shape', images.shape)
-            # if self._mirror_augment:
-            #     images = misc.apply_mirror_augment(images)
-            yield images
-
-    def _iterate_test_reals(self, minibatch_size):
-        dataset_obj = self._get_test_dataset_obj()
-        while True:
-            images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
-            images = images * 255 + 0.5
-            images = images.astype( 'uint8' )
-            # images = tflib.convert_3d_images_to_uint8( images, drange=[0, 1.0] )
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                # images = tf.concat([images, images, images], axis=1)
-                images = np.repeat(images, 3, axis=1)
-            #print('images.shape', images.shape)
-            # if self._mirror_augment:
-            #     images = misc.apply_mirror_augment(images)
-            yield images
-
-    def _iterate_test_reals_norgb(self, minibatch_size):
-        dataset_obj = self._get_test_dataset_obj()
-        while True:
-            images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
-            images = images.astype( 'float32' )
-            # images = tflib.convert_3d_images_to_uint8( images, drange=[0, 1.0] )
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                # images = tf.concat([images, images, images], axis=1)
-                images = np.repeat(images, 1, axis=1)
-            #print('images.shape', images.shape)
-            # if self._mirror_augment:
-            #     images = misc.apply_mirror_augment(images)
+            if self._mirror_augment:
+                images = misc.apply_mirror_augment(images)
             yield images
 
     def _iterate_fakes(self, Gs, minibatch_size, num_gpus):
         while True:
             latents = np.random.randn(minibatch_size, *Gs.input_shape[1:])
-            fmt = dict(func=tflib.convert_3d_images_to_uint8, nchwd_to_nhwdc=False)
+            fmt = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
             images = Gs.run(latents, None, output_transform=fmt, is_validation=True, num_gpus=num_gpus, assume_frozen=True)
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                images = np.repeat(images, 3, axis=1)
-            #print('images.shape', images.shape)
             yield images
-
-    def _iterate_fakes_norgb(self, Gs, minibatch_size, num_gpus):
-        while True:
-            latents = np.random.randn(minibatch_size, *Gs.input_shape[1:])
-            # fmt = dict(func=tflib.convert_3d_images_to_uint8, nchwd_to_nhwdc=False)
-            images = Gs.run(latents, None, output_transform=None, is_validation=True, num_gpus=num_gpus, assume_frozen=True)
-            images = images.astype( 'float32' )
-
-            #print('images.shape', images.shape)
-            if images.shape[1] == 1:
-                images = np.repeat(images, 1, axis=1)
-            print('images.shape', images.shape)
-            yield images
-
 
     def _get_random_labels_tf(self, minibatch_size):
         return self._get_dataset_obj().get_random_labels_tf(minibatch_size)
