@@ -3,5 +3,7 @@ sbatch/*
 ._*
 .DS_Store
 results/*
-datasets/*
+datasets
 logs/*
+dnnlib/tflib/_cudacache/*
+.stylegan2-cache/
