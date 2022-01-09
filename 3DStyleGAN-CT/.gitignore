@@ -1,0 +1,9 @@
+__pycache__
+sbatch/*
+._*
+.DS_Store
+results/*
+datasets
+logs/*
+dnnlib/tflib/_cudacache/*
+.stylegan2-cache/
